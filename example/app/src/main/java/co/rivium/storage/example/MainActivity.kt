@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 // ============================================================
 
 // Replace with your actual API key from the Rivium Console
-private const val API_KEY = "rv_live_64e0ada5eeb66e3adf6136337802a5a34713ce4966372854"
+private const val API_KEY = "YOUR_API_KEY"
 private const val BUCKET_NAME = "my-bucket"
 
 // User ID for bucket policy enforcement (sent as x-user-id header)
