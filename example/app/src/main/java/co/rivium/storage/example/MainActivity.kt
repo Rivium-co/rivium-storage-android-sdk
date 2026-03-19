@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 // ============================================================
 
 // Replace with your actual API key from the Rivium Console
-private const val API_KEY = "YOUR_API_KEY"
+private const val API_KEY = "rv_live_64e0ada5eeb66e3adf6136337802a5a34713ce4966372854"
 private const val BUCKET_NAME = "my-bucket"
 
 // User ID for bucket policy enforcement (sent as x-user-id header)
@@ -615,8 +615,9 @@ fun RiviumStorageExampleApp() {
 
                     log("")
                     log("=".repeat(40))
-                    log("  TEST: No Rules (default - allow all)")
-                    log("  Dashboard: Delete all rules from bucket")
+                    log("  TEST: No Rules (no policy on bucket)")
+                    log("  Dashboard: Delete the policy from bucket")
+                    log("  When no policy exists, all access is allowed")
                     log("=".repeat(40))
                     log("")
                     log("Current userId: ${storage.userId ?: "none (unauthenticated)"}")
@@ -627,7 +628,7 @@ fun RiviumStorageExampleApp() {
                     log("Upload image:       ${tryUpload(storage, bucketId, "test/no-rules-$ts.png", pngData(), "image/png")}")
                     log("List files:         ${tryList(storage, bucketId)}")
                     log("")
-                    log("Expected: Everything ALLOWED (no restrictions)")
+                    log("Expected: Everything ALLOWED (no policy = no restrictions)")
                 }
             }
         }
@@ -643,7 +644,8 @@ fun RiviumStorageExampleApp() {
                     log("=".repeat(40))
                     log("  TEST: Private Template")
                     log("  Dashboard: Apply 'Private' template")
-                    log("  Rule: Block unauthenticated access")
+                    log("  Rule: Allow only authenticated users")
+                    log("  (default-deny: unauthenticated = denied)")
                     log("=".repeat(40))
                     log("")
 
@@ -683,7 +685,8 @@ fun RiviumStorageExampleApp() {
                     log("=".repeat(40))
                     log("  TEST: Public Read Template")
                     log("  Dashboard: Apply 'Public Read' template")
-                    log("  Rule: Anyone reads, auth required to write")
+                    log("  Rule: Anyone can read/list,")
+                    log("        auth required to write/delete")
                     log("=".repeat(40))
                     log("")
 
@@ -722,7 +725,8 @@ fun RiviumStorageExampleApp() {
                     log("=".repeat(40))
                     log("  TEST: User Folders Template")
                     log("  Dashboard: Apply 'User Folders' template")
-                    log("  Rule: Write/delete only in users/{userId}/")
+                    log("  Rule: Auth users can read/list all,")
+                    log("        write/delete only in users/{userId}/")
                     log("=".repeat(40))
                     log("")
 
@@ -774,7 +778,9 @@ fun RiviumStorageExampleApp() {
                     log("=".repeat(40))
                     log("  TEST: Images Only Template")
                     log("  Dashboard: Apply 'Images Only' template")
-                    log("  Rule: Only image uploads (JPEG/PNG/GIF/WebP, 5MB)")
+                    log("  Rule: Anyone can read/list/delete,")
+                    log("        only auth users can upload images")
+                    log("        (JPEG/PNG/GIF/WebP, 5MB max)")
                     log("=".repeat(40))
                     log("")
 
