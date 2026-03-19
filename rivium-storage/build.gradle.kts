@@ -1,7 +1,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("maven-publish")
+    id("com.vanniktech.maven.publish") version "0.30.0"
 }
 
 android {
@@ -10,7 +10,6 @@ android {
 
     defaultConfig {
         minSdk = 16
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
 
@@ -46,16 +45,39 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("release") {
-            groupId = "co.rivium"
-            artifactId = "rivium-storage"
-            version = "0.1.0"
+mavenPublishing {
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+    signAllPublications()
 
-            afterEvaluate {
-                from(components["release"])
+    coordinates("co.rivium", "rivium-storage", project.findProperty("VERSION_NAME") as String? ?: "0.1.0")
+
+    pom {
+        name.set("RiviumStorage Android SDK")
+        description.set("File storage and CDN SDK for Android - upload, download, image transforms, bucket policies")
+        inceptionYear.set("2025")
+        url.set("https://rivium.co")
+
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
+                distribution.set("repo")
             }
+        }
+
+        developers {
+            developer {
+                id.set("rivium")
+                name.set("Rivium")
+                email.set("founder@rivium.co")
+                url.set("https://rivium.co")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/Rivium-co/rivium-storage-android-sdk")
+            connection.set("scm:git:git://github.com/Rivium-co/rivium-storage-android-sdk.git")
+            developerConnection.set("scm:git:ssh://git@github.com/Rivium-co/rivium-storage-android-sdk.git")
         }
     }
 }
