@@ -1,0 +1,25 @@
+# Build
+build/
+*.apk
+*.aab
+
+# Gradle
+.gradle/
+.kotlin/
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# macOS
+.DS_Store
+
+# Claude / Cloud
+.cloud/
+.claude/
+
+# Gradle wrapper jar
+gradle/wrapper/gradle-wrapper.jar
+example/gradle/wrapper/gradle-wrapper.jar
