@@ -4,6 +4,9 @@ plugins {
     id("com.vanniktech.maven.publish") version "0.30.0"
 }
 
+// One version for the Maven coordinates and the runtime X-Rivium-SDK header.
+val sdkVersion = project.findProperty("VERSION_NAME") as String? ?: "0.2.0"
+
 android {
     namespace = "co.rivium.storage"
     compileSdk = 34
@@ -11,6 +14,13 @@ android {
     defaultConfig {
         minSdk = 16
         consumerProguardFiles("consumer-rules.pro")
+
+        // SDK version exposed at runtime (RiviumStorage.SDK_VERSION, X-Rivium-SDK header).
+        buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -49,7 +59,7 @@ mavenPublishing {
     publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
     signAllPublications()
 
-    coordinates("co.rivium", "rivium-storage", project.findProperty("VERSION_NAME") as String? ?: "0.2.0")
+    coordinates("co.rivium", "rivium-storage", sdkVersion)
 
     pom {
         name.set("RiviumStorage Android SDK")

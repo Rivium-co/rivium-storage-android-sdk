@@ -74,6 +74,18 @@ class RiviumStorage @JvmOverloads constructor(
         .create()
 
     companion object {
+        /** This SDK's version, sent to Rivium Storage as `X-Rivium-SDK: android/<version>`. */
+        const val SDK_VERSION: String = BuildConfig.SDK_VERSION
+
+        /** Name this SDK reports in the `X-Rivium-SDK` header. */
+        const val SDK_NAME: String = "android"
+
+        /** Header that names the SDK making the request. */
+        internal const val SDK_HEADER = "X-Rivium-SDK"
+
+        /** Value of [SDK_HEADER]: `android/<version>`. Only the public SDK name and version. */
+        internal const val SDK_HEADER_VALUE = "$SDK_NAME/$SDK_VERSION"
+
         /**
          * Start building a [RiviumStorage]:
          * ```kotlin
@@ -176,9 +188,14 @@ class RiviumStorage @JvmOverloads constructor(
     // Private Helpers
     // ==========================================
 
-    /** Auth headers: `x-user-token` when there is a token, otherwise the legacy `x-user-id`. */
+    /**
+     * Auth headers: `x-user-token` when there is a token, otherwise the legacy `x-user-id`.
+     * Every Rivium Storage API request goes through here, so it also carries `X-Rivium-SDK`.
+     */
     private fun withAuth(request: Request, token: String?): Request {
-        val builder = request.newBuilder().header("x-api-key", config.apiKey)
+        val builder = request.newBuilder()
+            .header("x-api-key", config.apiKey)
+            .header(SDK_HEADER, SDK_HEADER_VALUE)
         if (token != null) {
             builder.header("x-user-token", token).removeHeader("x-user-id")
         } else {

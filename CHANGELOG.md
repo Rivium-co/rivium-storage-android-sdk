@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Every request to Rivium Storage now names the SDK in an `X-Rivium-SDK:
+  android/<version>` header (only the public SDK name and version), like the
+  other Rivium SDKs. New constants `RiviumStorage.SDK_NAME` and
+  `RiviumStorage.SDK_VERSION`; the version comes from `VERSION_NAME` in
+  `gradle.properties`, the same value as the Maven version.
+
 ## 0.2.0
 
 - Sign users in with a Rivium user token — the same token Rivium Sync, Chat,
