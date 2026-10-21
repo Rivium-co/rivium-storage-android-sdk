@@ -110,7 +110,7 @@ and cannot carry the token, so they only work for public buckets.
 
 ## Documentation
 
-For full documentation, visit [rivium.co/docs](https://rivium.co/cloud/rivium-storage/docs).
+For full documentation, visit [rivium.co/docs](https://rivium.co/cloud/rivium-storage/docs/android).
 - [Rivium Cloud](https://rivium.co/cloud)
 - [Rivium Console](https://console.rivium.co)
 

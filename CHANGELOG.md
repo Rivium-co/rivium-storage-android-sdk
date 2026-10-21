@@ -2,21 +2,17 @@
 
 ## 0.2.0
 
-- Rivium user token: one signed token for every Rivium product.
-  `RiviumStorage.builder(apiKey).userTokenProvider { ... }.build()` (or the
-  `userTokenProvider` / `userToken` constructor parameters), `userTokens`
-  (`provider`, `set`, `refresh`, `invalidate`, same API as Rivium Sync), and
-  `setUserToken`, `setUserTokenProvider`, `refreshUserToken`.
-- The token is sent as `x-user-token`. The provider is asked before the first
-  request and once more, with one retry of the request (uploads included),
-  when the server answers `token_expired` or `token_invalid`. Concurrent
-  requests share one provider call. A token about to expire is refreshed
-  before it is sent.
-- New `RiviumStorageException.UserTokenRequiredException` (`token_required`)
-  and `RiviumStorageException.UserTokenRejectedException` (`code`). Code with
-  an exhaustive `when` over `RiviumStorageException` needs the two branches.
-- While a token is in use, `x-user-id` is not sent. `userId` / `setUserId`
-  still work as before (legacy, unverifiable).
+- Sign users in with a Rivium user token — the same token Rivium Sync, Chat,
+  Push and A/B Testing accept (a Rivium Auth sign-in token works as is):
+  `RiviumStorage.builder(apiKey).userTokenProvider { ... }.build()`, or
+  `setUserToken` / `refreshUserToken` and `userTokens` (same API as Rivium
+  Sync). The SDK sends the token with every request and gets a new one when it
+  expires, so your access rules see a verified user.
+- New `RiviumStorageException.UserTokenRequiredException` and
+  `RiviumStorageException.UserTokenRejectedException`. If your code uses an
+  exhaustive `when` over `RiviumStorageException`, add the two branches.
+- `userId` / `setUserId` still work but are deprecated: the server can't
+  verify a user ID sent by an app. Use the token provider.
 
 ## 0.1.0
 
