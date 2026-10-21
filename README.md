@@ -25,7 +25,7 @@ Add to your `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("co.rivium:rivium-storage:0.1.0")
+    implementation("co.rivium:rivium-storage:0.2.0")
 }
 ```
 
@@ -61,6 +61,42 @@ val thumbnailUrl = storage.getTransformUrl(
 val bytes = storage.download(file.id)
 ```
 
+## Sign users in (one token for every Rivium product)
+
+Bucket rules that use `{userId}` need to know who the user is. Let your
+backend mint a short-lived Rivium user token and give the SDK a way to get it:
+
+```kotlin
+val storage = RiviumStorage.builder("rv_live_xxx")
+    // Called on a background thread. Return null when no one is signed in.
+    .userTokenProvider { myBackend.fetchRiviumToken() }
+    .build()
+
+// When the user signs in or out:
+storage.refreshUserToken()          // same as storage.userTokens.refresh()
+```
+
+Your backend mints the token with `POST https://auth.rivium.co/users/token`
+and your project's server secret, which must stay on your server and never
+ship in an app. If you use **Rivium Auth**, its sign-in token is this same
+token: return it from the provider as is. It is the same token Rivium Sync,
+Chat, Push and A/B Testing accept, so one function serves them all.
+
+The SDK sends it as the `x-user-token` header, asks the provider before the
+first request, and asks again (retrying the request once, uploads included)
+when the token has expired or is refused. If you would rather fetch the token
+yourself, call `storage.setUserToken(token)` (or `storage.userTokens.set(token)`)
+whenever you refresh it; `null` signs out.
+
+If the project requires a user token and none is available, calls throw
+`RiviumStorageException.UserTokenRequiredException`.
+
+`userId` / `setUserId()` still work but are **legacy**: the server cannot
+verify a user ID sent by an app. While a token is in use, it is not sent.
+
+URL helpers (`getUrl`, `getTransformUrl`, `getDownloadUrl`) return plain URLs
+and cannot carry the token, so they only work for public buckets.
+
 ## Features
 
 - **Upload & Download** — Upload files to buckets, download by ID or path
@@ -68,7 +104,7 @@ val bytes = storage.download(file.id)
 - **Bucket Management** — List, get by ID or name
 - **File Operations** — List with prefix filtering, pagination, get metadata, delete single or batch
 - **URL Generation** — Public URLs, download URLs, and transform URLs for use with Coil/Glide
-- **Security Rules** — User-scoped access with `setUserId()` for bucket policy enforcement
+- **Security Rules** — User-scoped access with a signed Rivium user token (`userTokenProvider`) for bucket policy enforcement
 - **Coroutine-based** — All async operations use Kotlin coroutines
 - **OkHttp + Gson** — Built on industry-standard libraries
 

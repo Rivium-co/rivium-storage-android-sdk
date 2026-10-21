@@ -841,6 +841,10 @@ fun RiviumStorageExampleApp() {
                                 log("Invalid Response", true)
                             is RiviumStorageException.EncodingException ->
                                 log("Encoding Error: ${e.message}", true)
+                            is RiviumStorageException.UserTokenRequiredException ->
+                                log("User token required: ${e.message}", true)
+                            is RiviumStorageException.UserTokenRejectedException ->
+                                log("User token refused (${e.code}): ${e.message}", true)
                         }
                         log("")
                         log("Error handling example complete!")

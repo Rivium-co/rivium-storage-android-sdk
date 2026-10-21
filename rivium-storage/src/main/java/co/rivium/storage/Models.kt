@@ -13,7 +13,7 @@ data class RiviumStorageConfig(
     val baseUrl: String = "https://storage.rivium.co",
     /** Request timeout in seconds */
     val timeout: Int = 30,
-    /** Optional user ID for bucket policy enforcement */
+    /** Legacy, unverifiable user ID for bucket policy enforcement; prefer a user token */
     val userId: String? = null
 )
 
@@ -140,6 +140,21 @@ sealed class RiviumStorageException(message: String) : Exception(message) {
     class DownloadException(message: String) : RiviumStorageException("Download error: $message")
     class InvalidResponseException : RiviumStorageException("Invalid response from server")
     class EncodingException(message: String) : RiviumStorageException("Encoding error: $message")
+
+    /**
+     * The project requires a signed Rivium user token and the request carried
+     * none (`token_required`). Give RiviumStorage a `userTokenProvider`, or
+     * call `setUserToken`.
+     */
+    class UserTokenRequiredException(message: String) : RiviumStorageException(message) {
+        val code: String get() = "token_required"
+    }
+
+    /**
+     * The server refused the user token ([code] is `token_expired` or
+     * `token_invalid`) and the provider had no other one.
+     */
+    class UserTokenRejectedException(val code: String, message: String) : RiviumStorageException(message)
 }
 
 /**
@@ -147,5 +162,6 @@ sealed class RiviumStorageException(message: String) : Exception(message) {
  */
 internal data class ApiErrorResponse(
     val message: String? = null,
-    val error: String? = null
+    val error: String? = null,
+    val code: String? = null
 )
