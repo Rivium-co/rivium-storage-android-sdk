@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      Rivium Storage itself is always HTTPS, and so is everything else by default. Plain HTTP is
+      allowed ONLY for these local hosts, so this example can reach a token server running on your
+      computer during development:
+        - emulator: http://10.0.2.2:4000
+        - phone over USB: run `adb reverse tcp:4000 tcp:4000`, then use http://localhost:4000
+          (recommended)
+        - phone on your Wi-Fi: add your computer's LAN IP (e.g. 192.168.1.20) as one more
+          <domain> line below, then use http://<that IP>:4000
+      A real app talks to its token server over HTTPS.
+    -->
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

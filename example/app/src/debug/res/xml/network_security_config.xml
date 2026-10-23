@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG builds of this example only (src/debug overrides src/main): plain HTTP to any host, so a phone on your Wi-Fi
+  can reach the token server at http://<your computer's LAN IP>:4000. Rivium Storage itself is always HTTPS.
+  Release builds use src/main/res/xml/network_security_config.xml (local hosts only; use `adb reverse tcp:4000 tcp:4000`
+  and http://localhost:4000 there).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

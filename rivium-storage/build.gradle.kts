@@ -12,7 +12,8 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 16
+        // OkHttp 4.12 needs Android 5.0 (API 21).
+        minSdk = 21
         consumerProguardFiles("consumer-rules.pro")
 
         // SDK version exposed at runtime (RiviumStorage.SDK_VERSION, X-Rivium-SDK header).
@@ -51,6 +52,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 }

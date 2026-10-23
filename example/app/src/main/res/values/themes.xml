@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RiviumStorageExample" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@android:color/white</item>
-    </style>
+    <!-- Window theme only; the UI is Compose Material 3 (light/dark, dynamic colour on Android 12+). -->
+    <style name="Theme.RiviumStorageExample" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>

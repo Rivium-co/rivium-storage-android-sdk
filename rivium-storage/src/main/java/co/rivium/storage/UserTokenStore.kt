@@ -5,12 +5,10 @@ import java.util.concurrent.atomic.AtomicReference
 /**
  * Holds the signed Rivium user token the SDK sends as `x-user-token`.
  *
- * Bucket rules match `{userId}` against the signed-in user. The legacy
- * `x-user-id` header cannot prove who that is - the API key shipped in the app
- * is public, so any client could claim any user. Your backend mints a token
- * instead (`POST https://auth.rivium.co/users/token`, with the server secret),
- * or you use the token Rivium Auth gave you at sign-in - it is the same token -
- * and the app hands it to the SDK here.
+ * Every file request carries it: bucket rules match `{userId}` against the
+ * signed-in user it names. Sign users in with Rivium Auth (its token is this
+ * token), or let your backend mint one (`POST https://auth.rivium.co/users/token`,
+ * with the server secret), and hand it to the SDK here.
  *
  * Supply a [provider] so the SDK can fetch a token by itself: before the first
  * request, when the one it holds is close to expiry, and when the server
@@ -26,6 +24,10 @@ class UserTokenStore internal constructor() {
     /** True once the current state is known: a token was set or the provider answered (even with null). */
     @Volatile
     private var resolved = false
+
+    /** Told after the token state changed, so file requests waiting for a token ask again. */
+    @Volatile
+    internal var onChange: (() -> Unit)? = null
 
     /**
      * Fetches a token for the signed-in user, called on a background thread.
@@ -44,6 +46,7 @@ class UserTokenStore internal constructor() {
             store(newToken)
             resolved = true
         }
+        onChange?.invoke()
     }
 
     /**
@@ -61,6 +64,7 @@ class UserTokenStore internal constructor() {
             expiresAtSeconds.set(0L)
             resolved = false
         }
+        onChange?.invoke()
     }
 
     /** The token currently held, without asking the provider. */
@@ -88,7 +92,8 @@ class UserTokenStore internal constructor() {
         if (isFresh()) return token.get()
         val fetch = provider ?: return token.get() // No provider: whatever was set, even if stale.
 
-        return synchronized(this) {
+        var fetched = false
+        val result = synchronized(this) {
             // Another thread may have fetched while this one waited.
             if (isFresh()) {
                 token.get()
@@ -98,6 +103,7 @@ class UserTokenStore internal constructor() {
                     val fresh = fetch()
                     store(fresh)
                     resolved = true
+                    fetched = fresh != null
                     fresh
                 } catch (e: Exception) {
                     // Let the server decide; the old token may still work.
@@ -105,6 +111,8 @@ class UserTokenStore internal constructor() {
                 }
             }
         }
+        if (fetched) onChange?.invoke()
+        return result
     }
 
     /**
@@ -114,7 +122,8 @@ class UserTokenStore internal constructor() {
      */
     internal fun renewAfterRejection(rejected: String?): String? {
         val fetch = provider ?: return null
-        return synchronized(this) {
+        var fetched = false
+        val result = synchronized(this) {
             val held = token.get()
             if (resolved && held != null && held != rejected) {
                 held
@@ -123,12 +132,15 @@ class UserTokenStore internal constructor() {
                     val fresh = fetch()
                     store(fresh)
                     resolved = true
+                    fetched = fresh != null && fresh != rejected
                     fresh?.takeIf { it != rejected }
                 } catch (e: Exception) {
                     null
                 }
             }
         }
+        if (fetched) onChange?.invoke()
+        return result
     }
 
     /** Expiry (`exp`) from the JWT payload, or 0 when it cannot be read. */

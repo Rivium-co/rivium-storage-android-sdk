@@ -1,0 +1,94 @@
+{
+  "$comment": "Rivium Storage file types: ONE list for the Console (Bucket settings chips, New bucket presets), the server's alignment test and the SDKs. Copies that must stay identical: RiviumConsole/dashboard/src/components/rivium-storage/file-types.json, RiviumConsole/docs/storage-redesign/FILE-TYPES.md (JSON block) and RiviumStorage/backend/src/modules/files/file-types.json. extensions maps each file extension to the MIME type an SDK should send for it (the type the server stores for that format); mimes is every type the server can store for the format (the primary types first, then the aliases): a bucket that allows the format allows all of them.",
+  "version": 1,
+  "groups": [
+    {
+      "key": "images",
+      "label": "Images",
+      "formats": [
+        { "key": "jpeg", "label": "JPEG", "extensions": { "jpg": "image/jpeg", "jpeg": "image/jpeg" }, "mimes": ["image/jpeg"] },
+        { "key": "png", "label": "PNG", "extensions": { "png": "image/png" }, "mimes": ["image/png"] },
+        { "key": "webp", "label": "WebP", "extensions": { "webp": "image/webp" }, "mimes": ["image/webp"] },
+        { "key": "avif", "label": "AVIF", "extensions": { "avif": "image/avif" }, "mimes": ["image/avif"] },
+        { "key": "gif", "label": "GIF", "extensions": { "gif": "image/gif" }, "mimes": ["image/gif"] },
+        { "key": "heic", "label": "HEIC/HEIF", "extensions": { "heic": "image/heic", "heif": "image/heif" }, "mimes": ["image/heic", "image/heif", "image/heic-sequence", "image/heif-sequence"] },
+        { "key": "bmp", "label": "BMP", "extensions": { "bmp": "image/bmp" }, "mimes": ["image/bmp", "image/x-ms-bmp"] }
+      ]
+    },
+    {
+      "key": "documents",
+      "label": "Documents",
+      "formats": [
+        { "key": "pdf", "label": "PDF", "extensions": { "pdf": "application/pdf" }, "mimes": ["application/pdf"] },
+        { "key": "word", "label": "Word", "extensions": { "doc": "application/msword", "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }, "mimes": ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] },
+        { "key": "excel", "label": "Excel", "extensions": { "xls": "application/vnd.ms-excel", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }, "mimes": ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"] },
+        { "key": "powerpoint", "label": "PowerPoint", "extensions": { "ppt": "application/vnd.ms-powerpoint", "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation" }, "mimes": ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation"] },
+        { "key": "opendocument", "label": "OpenDocument", "extensions": { "odt": "application/vnd.oasis.opendocument.text", "ods": "application/vnd.oasis.opendocument.spreadsheet", "odp": "application/vnd.oasis.opendocument.presentation" }, "mimes": ["application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.spreadsheet", "application/vnd.oasis.opendocument.presentation"] },
+        { "key": "rtf", "label": "RTF", "extensions": { "rtf": "application/rtf" }, "mimes": ["application/rtf", "text/rtf"] }
+      ]
+    },
+    {
+      "key": "text",
+      "label": "Text · Data",
+      "formats": [
+        { "key": "txt", "label": "TXT", "extensions": { "txt": "text/plain" }, "mimes": ["text/plain"] },
+        { "key": "csv", "label": "CSV", "extensions": { "csv": "text/csv" }, "mimes": ["text/csv", "application/csv", "text/comma-separated-values", "text/x-csv"] },
+        { "key": "json", "label": "JSON", "extensions": { "json": "application/json" }, "mimes": ["application/json", "text/json"] },
+        { "key": "markdown", "label": "Markdown", "extensions": { "md": "text/markdown", "markdown": "text/markdown" }, "mimes": ["text/markdown", "text/x-markdown"] },
+        { "key": "xml", "label": "XML", "risky": true, "extensions": { "xml": "application/xml" }, "mimes": ["application/xml", "text/xml"] },
+        { "key": "yaml", "label": "YAML", "extensions": { "yaml": "text/yaml", "yml": "text/yaml" }, "mimes": ["text/yaml", "application/yaml", "application/x-yaml", "text/x-yaml"] }
+      ]
+    },
+    {
+      "key": "video",
+      "label": "Video",
+      "all": { "label": "All video", "mime": "video/*" },
+      "formats": [
+        { "key": "mp4", "label": "MP4", "extensions": { "mp4": "video/mp4", "m4v": "video/x-m4v" }, "mimes": ["video/mp4", "video/x-m4v"] },
+        { "key": "mov", "label": "MOV", "extensions": { "mov": "video/quicktime" }, "mimes": ["video/quicktime"] },
+        { "key": "webm", "label": "WebM", "extensions": { "webm": "video/webm" }, "mimes": ["video/webm"] },
+        { "key": "mkv", "label": "MKV", "extensions": { "mkv": "video/x-matroska" }, "mimes": ["video/x-matroska", "video/matroska"] }
+      ]
+    },
+    {
+      "key": "audio",
+      "label": "Audio",
+      "all": { "label": "All audio", "mime": "audio/*" },
+      "formats": [
+        { "key": "mp3", "label": "MP3", "extensions": { "mp3": "audio/mpeg" }, "mimes": ["audio/mpeg", "audio/mp3"] },
+        { "key": "wav", "label": "WAV", "extensions": { "wav": "audio/vnd.wave" }, "mimes": ["audio/vnd.wave", "audio/wav", "audio/wave", "audio/x-wav"] },
+        { "key": "m4a", "label": "M4A/AAC", "extensions": { "m4a": "audio/x-m4a", "aac": "audio/aac" }, "mimes": ["audio/x-m4a", "audio/aac", "audio/mp4", "audio/x-aac"] },
+        { "key": "ogg", "label": "OGG", "extensions": { "ogg": "audio/ogg", "oga": "audio/ogg", "opus": "audio/opus" }, "mimes": ["audio/ogg", "audio/opus"] },
+        { "key": "flac", "label": "FLAC", "extensions": { "flac": "audio/x-flac" }, "mimes": ["audio/x-flac", "audio/flac"] }
+      ]
+    },
+    {
+      "key": "archives",
+      "label": "Archives",
+      "formats": [
+        { "key": "zip", "label": "ZIP", "extensions": { "zip": "application/zip" }, "mimes": ["application/zip", "application/x-zip-compressed"] },
+        { "key": "7z", "label": "7z", "extensions": { "7z": "application/x-7z-compressed" }, "mimes": ["application/x-7z-compressed"] },
+        { "key": "tar", "label": "TAR", "extensions": { "tar": "application/x-tar" }, "mimes": ["application/x-tar"] },
+        { "key": "gz", "label": "GZ", "extensions": { "gz": "application/gzip", "tgz": "application/gzip" }, "mimes": ["application/gzip", "application/x-gzip"] },
+        { "key": "rar", "label": "RAR", "extensions": { "rar": "application/x-rar-compressed" }, "mimes": ["application/x-rar-compressed", "application/vnd.rar"] }
+      ]
+    },
+    {
+      "key": "risky",
+      "label": "Risky",
+      "risky": true,
+      "formats": [
+        { "key": "svg", "label": "SVG", "risky": true, "extensions": { "svg": "image/svg+xml" }, "mimes": ["image/svg+xml"] },
+        { "key": "html", "label": "HTML", "risky": true, "extensions": { "html": "text/html", "htm": "text/html", "xhtml": "application/xhtml+xml" }, "mimes": ["text/html", "application/xhtml+xml"] }
+      ]
+    }
+  ],
+  "presets": [
+    { "key": "images", "label": "Images", "formats": ["jpeg", "png", "webp", "avif", "gif", "heic", "bmp"] },
+    { "key": "pdf", "label": "PDF", "formats": ["pdf"] },
+    { "key": "video", "label": "Video", "mimes": ["video/*"] },
+    { "key": "audio", "label": "Audio", "mimes": ["audio/*"] },
+    { "key": "documents", "label": "Documents", "formats": ["word", "excel", "powerpoint", "opendocument", "rtf", "txt", "csv"] },
+    { "key": "archives", "label": "Archives", "formats": ["zip", "7z", "tar", "gz", "rar"] }
+  ]
+}

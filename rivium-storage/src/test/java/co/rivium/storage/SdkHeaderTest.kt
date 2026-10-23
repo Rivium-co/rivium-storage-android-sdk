@@ -19,7 +19,7 @@ class SdkHeaderTest {
     private val seen: MutableList<Request> = Collections.synchronizedList(mutableListOf())
 
     private val fileJson = """{"id":"f1","bucketId":"b1","path":"a/b.txt","fileName":"b.txt","mimeType":"text/plain",
-        |"size":3,"storageKey":"k","isDeleted":false,"createdAt":"2026-01-01T00:00:00.000Z",
+        |"size":3,"createdAt":"2026-01-01T00:00:00.000Z",
         |"updatedAt":"2026-01-01T00:00:00.000Z"}""".trimMargin()
 
     private fun client(): OkHttpClient = OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
@@ -48,7 +48,7 @@ class SdkHeaderTest {
 
     @Test
     fun bucketUploadAndDownloadRequestsCarryTheHeader() = runBlocking {
-        val storage = RiviumStorage.builder("rv_live_x").client(client()).build()
+        val storage = RiviumStorage.builder("rv_live_x").userToken("tok").client(client()).build()
 
         storage.listBuckets()
         storage.upload("b1", "a/b.txt", "abc".toByteArray())

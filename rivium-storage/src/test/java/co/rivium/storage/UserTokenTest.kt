@@ -1,9 +1,12 @@
 package co.rivium.storage
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -45,13 +48,12 @@ class UserTokenTest {
     private fun error401(code: String) = 401 to """{"statusCode":401,"code":"$code","message":"$code"}"""
 
     private val fileJson = """{"id":"f1","bucketId":"b1","path":"a/b.txt","fileName":"b.txt","mimeType":"text/plain",
-        |"size":3,"storageKey":"k","isDeleted":false,"createdAt":"2026-01-01T00:00:00.000Z",
+        |"size":3,"createdAt":"2026-01-01T00:00:00.000Z",
         |"updatedAt":"2026-01-01T00:00:00.000Z"}""".trimMargin()
 
     @Test
-    fun sendsTokenFromProviderAndNoUserId() = runBlocking {
+    fun sendsTokenFromProviderAndNeverUserId() = runBlocking<Unit> {
         val storage = RiviumStorage.builder("rv_live_x")
-            .userId("legacy")
             .userTokenProvider { "tok-1" }
             .client(client { 200 to "[]" })
             .build()
@@ -65,18 +67,191 @@ class UserTokenTest {
     }
 
     @Test
-    fun legacyUserIdUnchangedWithoutToken() = runBlocking {
-        val storage = RiviumStorage(apiKey = "rv_live_x", userId = "u1", client = client { 200 to "[]" })
+    fun listBucketsDoesNotWaitWithoutToken() = runBlocking<Unit> {
+        val storage = RiviumStorage(apiKey = "rv_live_x", client = client { 200 to "[]" })
 
-        storage.listBuckets()
+        withTimeout(2_000) { storage.listBuckets() }
 
+        assertFalse(storage.isAwaitingUserToken)
         val headers = seen.single().request.headers
-        assertEquals("u1", headers["x-user-id"])
         assertNull(headers["x-user-token"])
+        assertNull(headers["x-user-id"])
     }
 
     @Test
-    fun tokenExpiredRefreshesAndRetriesOnce() = runBlocking {
+    fun blockingProviderLikeRiviumAuthIsAccepted() = runBlocking<Unit> {
+        // RiviumAuth.shared.blockingTokenProvider is `() -> String?` (typealias RiviumAuthBlockingTokenProvider).
+        val authProvider: () -> String? = { "auth-tok" }
+        val storage = RiviumStorage.builder("rv_live_x")
+            .userTokenProvider(authProvider)
+            .client(client { 200 to fileJson })
+            .build()
+
+        storage.getFile("f1")
+
+        assertEquals("auth-tok", seen.single().request.header("x-user-token"))
+    }
+
+    @Test
+    fun fileCallWaitsUntilSetUserToken() = runBlocking<Unit> {
+        val fired = AtomicInteger()
+        val storage = RiviumStorage.builder("rv_live_x")
+            .client(client { 200 to fileJson })
+            .onAwaitingUserToken { fired.incrementAndGet() }
+            .build()
+
+        val calls = (1..3).map { async(Dispatchers.IO) { storage.getFile("f$it") } }
+        awaitUntil { storage.isAwaitingUserToken }
+        delay(100)
+        assertTrue(seen.isEmpty()) // nothing sent while waiting
+        assertEquals(1, fired.get()) // once, not once per call
+        assertTrue(calls.none { it.isCompleted })
+
+        storage.setUserToken("tok")
+        calls.awaitAll()
+
+        assertEquals(3, seen.size)
+        assertTrue(seen.all { it.request.header("x-user-token") == "tok" && it.request.header("x-user-id") == null })
+        assertFalse(storage.isAwaitingUserToken)
+        assertEquals(1, fired.get())
+    }
+
+    @Test
+    fun providerNullThenRefreshUserTokenContinues() = runBlocking<Unit> {
+        var signedIn: String? = null
+        val asked = AtomicInteger()
+        val storage = RiviumStorage(
+            apiKey = "rv_live_x",
+            client = client { 200 to """{"files":[],"hasMore":false}""" },
+            userTokenProvider = { asked.incrementAndGet(); signedIn }
+        )
+
+        val call = async(Dispatchers.IO) { storage.listFiles("b1") }
+        awaitUntil { storage.isAwaitingUserToken }
+        assertTrue(seen.isEmpty())
+
+        signedIn = "later"
+        storage.refreshUserToken()
+        call.await()
+
+        assertEquals("later", seen.single().request.header("x-user-token"))
+        assertFalse(storage.isAwaitingUserToken)
+        assertTrue(asked.get() >= 2)
+    }
+
+    @Test
+    fun waitTimeoutFailsWithTokenRequired() = runBlocking<Unit> {
+        val storage = RiviumStorage.builder("rv_live_x")
+            .client(client { 200 to fileJson })
+            .userTokenWaitTimeout(150, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .build()
+        try {
+            storage.getFile("f1")
+            fail("expected an exception")
+        } catch (e: RiviumStorageException.UserTokenRequiredException) {
+            assertEquals(StorageErrorCode.TOKEN_REQUIRED, e.code)
+            assertEquals(401, e.statusCode)
+        }
+        assertTrue(seen.isEmpty())
+        assertFalse(storage.isAwaitingUserToken)
+    }
+
+    @Test
+    fun serverTokenRequiredParksThenContinues() = runBlocking<Unit> {
+        val storage = RiviumStorage(
+            apiKey = "rv_live_x",
+            userToken = "first",
+            client = client { req -> if (req.header("x-user-token") == "first") error401("token_required") else 200 to fileJson }
+        )
+
+        val call = async(Dispatchers.IO) { storage.getFile("f1") }
+        awaitUntil { storage.isAwaitingUserToken }
+        assertEquals(1, seen.size)
+
+        storage.setUserToken("second")
+        assertEquals("f1", call.await().id)
+        assertEquals(listOf("first", "second"), seen.map { it.request.header("x-user-token") })
+    }
+
+    @Test
+    fun expiredTokenAndProviderSignedOutWaits() = runBlocking<Unit> {
+        // The provider gives "old" (refused as expired), then null (signed out), then "new" after sign-in.
+        val answers = ArrayDeque(listOf<String?>("old", null))
+        val storage = RiviumStorage(
+            apiKey = "rv_live_x",
+            client = client { req -> if (req.header("x-user-token") == "old") error401("token_expired") else 200 to fileJson },
+            userTokenProvider = { synchronized(answers) { if (answers.isEmpty()) "new" else answers.removeFirst() } }
+        )
+
+        val call = async(Dispatchers.IO) { storage.getFile("f1") }
+        awaitUntil { storage.isAwaitingUserToken }
+        assertEquals(1, seen.size)
+
+        storage.refreshUserToken()
+        call.await()
+        assertEquals(listOf("old", "new"), seen.map { it.request.header("x-user-token") })
+    }
+
+    @Test
+    fun signingOutWhileWaitingKeepsWaiting() = runBlocking<Unit> {
+        val storage = RiviumStorage(apiKey = "rv_live_x", client = client { 200 to fileJson })
+
+        val call = async(Dispatchers.IO) { storage.download("f1") }
+        awaitUntil { storage.isAwaitingUserToken }
+
+        storage.setUserToken(null)
+        delay(100)
+        assertTrue(storage.isAwaitingUserToken)
+        assertFalse(call.isCompleted)
+        assertTrue(seen.isEmpty())
+
+        storage.setUserToken("tok")
+        call.await()
+        assertEquals("tok", seen.single().request.header("x-user-token"))
+    }
+
+    @Test
+    fun cancellingAWaitingCallStopsWaiting() = runBlocking<Unit> {
+        val storage = RiviumStorage(apiKey = "rv_live_x", client = client { 200 to fileJson })
+
+        val call = async(Dispatchers.IO) { storage.delete("f1") }
+        awaitUntil { storage.isAwaitingUserToken }
+        call.cancelAndJoin()
+
+        assertFalse(storage.isAwaitingUserToken)
+        storage.setUserToken("tok")
+        delay(50)
+        assertTrue(seen.isEmpty())
+    }
+
+    @Test
+    fun awaitingCallbackFiresAgainForANewWait() = runBlocking<Unit> {
+        val fired = AtomicInteger()
+        val storage = RiviumStorage(apiKey = "rv_live_x", client = client { 200 to fileJson })
+        storage.onAwaitingUserToken = { fired.incrementAndGet() }
+
+        val first = async(Dispatchers.IO) { storage.getFile("f1") }
+        awaitUntil { storage.isAwaitingUserToken }
+        storage.setUserToken("tok")
+        first.await()
+        assertEquals(1, fired.get())
+
+        storage.setUserToken(null)
+        val second = async(Dispatchers.IO) { storage.getFile("f1") }
+        awaitUntil { storage.isAwaitingUserToken }
+        assertEquals(2, fired.get())
+        storage.setUserToken("tok2")
+        second.await()
+    }
+
+    private suspend fun awaitUntil(condition: () -> Boolean) {
+        withTimeout(5_000) {
+            while (!condition()) delay(10)
+        }
+    }
+
+    @Test
+    fun tokenExpiredRefreshesAndRetriesOnce() = runBlocking<Unit> {
         val calls = AtomicInteger()
         val storage = RiviumStorage(
             apiKey = "rv_live_x",
@@ -94,7 +269,7 @@ class UserTokenTest {
     }
 
     @Test
-    fun retriesOnlyOnceThenThrowsTypedError() = runBlocking {
+    fun retriesOnlyOnceThenThrowsTypedError() = runBlocking<Unit> {
         val n = AtomicInteger()
         val storage = RiviumStorage(
             apiKey = "rv_live_x",
@@ -111,18 +286,7 @@ class UserTokenTest {
     }
 
     @Test
-    fun tokenRequiredWithoutProviderSaysWhatToDo() = runBlocking {
-        val storage = RiviumStorage(apiKey = "rv_live_x", client = client { error401("token_required") })
-        try {
-            storage.getFile("f1")
-            fail("expected an exception")
-        } catch (e: RiviumStorageException.UserTokenRequiredException) {
-            assertTrue(e.message!!.contains("userTokenProvider"))
-        }
-    }
-
-    @Test
-    fun uploadIsResentWithItsBodyAfterTokenExpired() = runBlocking {
+    fun uploadIsResentWithItsBodyAfterTokenExpired() = runBlocking<Unit> {
         val n = AtomicInteger()
         val storage = RiviumStorage(
             apiKey = "rv_live_x",
@@ -140,7 +304,7 @@ class UserTokenTest {
     }
 
     @Test
-    fun concurrentRequestsShareOneProviderCall() = runBlocking {
+    fun concurrentRequestsShareOneProviderCall() = runBlocking<Unit> {
         val calls = AtomicInteger()
         val storage = RiviumStorage(
             apiKey = "rv_live_x",
@@ -159,26 +323,24 @@ class UserTokenTest {
     }
 
     @Test
-    fun setUserTokenRefreshAndSignedOutProvider() = runBlocking {
+    fun setUserTokenRefreshAndSignedOutProvider() = runBlocking<Unit> {
         var current: String? = null
         val calls = AtomicInteger()
         val storage = RiviumStorage(
             apiKey = "rv_live_x",
-            userId = "u1",
             client = client { 200 to "[]" },
             userTokenProvider = { calls.incrementAndGet(); current }
         )
 
         storage.listBuckets()
         storage.listBuckets()
-        assertEquals(listOf("u1", "u1"), seen.map { it.request.header("x-user-id") })
+        assertTrue(seen.all { it.request.header("x-user-token") == null && it.request.header("x-user-id") == null })
         assertEquals(1, calls.get()) // signed out: not asked on every request
 
         current = "signed-in"
         storage.refreshUserToken()
         storage.listBuckets()
         assertEquals("signed-in", seen.last().request.header("x-user-token"))
-        assertNull(seen.last().request.header("x-user-id"))
 
         storage.setUserToken("manual")
         storage.listBuckets()
@@ -188,11 +350,11 @@ class UserTokenTest {
         storage.setUserTokenProvider(null)
         storage.listBuckets()
         assertFalse(seen.last().request.headers.names().contains("x-user-token"))
-        assertEquals("u1", seen.last().request.header("x-user-id"))
+        assertNull(seen.last().request.header("x-user-id"))
     }
 
     @Test
-    fun expiredTokenIsRefreshedBeforeSending() = runBlocking {
+    fun expiredTokenIsRefreshedBeforeSending() = runBlocking<Unit> {
         fun b64(s: String) = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(s.toByteArray())
         val now = System.currentTimeMillis() / 1000
         val expired = "${b64("{}")}.${b64("""{"exp":${now - 10}}""")}.sig"
